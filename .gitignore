@@ -1,0 +1,22 @@
+# Local configuration and secrets
+config.yaml
+
+# Runtime logs
+logs/
+*.log
+
+# Build outputs
+dist/
+.tmp-tools/
+mattermost-post
+mattermost-post.exe
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Keep project sources even if a user-level ignore file excludes generic names.
+!cmd/
+!cmd/**

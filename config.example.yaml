@@ -1,0 +1,14 @@
+mattermost:
+  url: "https://mattermost.example.com"
+  bot_token: "replace-with-real-token"
+
+groups:
+  daily-news:
+    team_name: "company"
+    channel_name: "daily-news"
+  alerts:
+    team_name: "operations"
+    channel_name: "alerts"
+
+log:
+  directory: "./logs"
