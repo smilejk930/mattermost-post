@@ -20,3 +20,6 @@ Thumbs.db
 # Keep project sources even if a user-level ignore file excludes generic names.
 !cmd/
 !cmd/**
+
+*.bat
+*.ps1
