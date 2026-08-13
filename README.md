@@ -5,7 +5,7 @@ Mattermost REST API v4를 사용해 설정된 팀·채널에 봇 게시글 하�
 ## 주요 기능
 
 - 그룹 이름으로 하나의 Mattermost 팀·채널 쌍 선택
-- 짧은 명령행 메시지, UTF-8 파일, 표준입력 파이프 지원
+- 짧은 명령행 메시지, UTF-8 파일, Google Docs `.gdoc`, 표준입력 파이프 지원
 - 사람이 읽는 기본 결과와 자동화용 `--json` 결과
 - 본문과 토큰을 제외한 일별 JSON Lines 로그
 - Mattermost 단일 게시글 한도 16,383 Unicode 문자 사전 검증
@@ -41,6 +41,10 @@ mattermost:
   url: "https://mattermost.example.com"
   bot_token: "your-real-bot-token"
 
+google_drive:
+  credentials_file: "./google-service-account.json"
+  folder_id: "google-drive-folder-id"
+
 groups:
   daily-news:
     team_name: "company"
@@ -56,6 +60,7 @@ log:
 - Mattermost URL에는 `/api/v4`를 붙이지 않습니다. 서버가 하위 경로에 설치된 경우 해당 기본 경로까지 입력할 수 있습니다.
 - `log.directory`가 상대 경로이면 `config.yaml`이 위치한 디렉터리를 기준으로 해석합니다. 생략하거나 비워 두면 `./logs`입니다.
 - `MATTERMOST_BOT_TOKEN` 환경변수가 비어 있지 않으면 설정 파일의 `bot_token`보다 우선합니다.
+- `.gdoc` 입력을 사용하지 않으면 `google_drive` 설정은 생략할 수 있습니다. `GOOGLE_APPLICATION_CREDENTIALS` 환경변수로 인증 파일 경로를 대신 지정할 수도 있습니다.
 - 실제 `config.yaml`은 Git에서 제외됩니다. `config.example.yaml`에는 실제 토큰을 입력하지 마세요.
 
 환경변수 사용 예:
@@ -101,6 +106,31 @@ cat article.md | ./mattermost-post --group daily-news --stdin
 ```
 
 Windows PowerShell 5.1은 네이티브 프로그램 파이프 인코딩이 UTF-8이 아닐 수 있습니다. 이 경우 `--file`을 사용하거나 PowerShell 7 이상에서 실행하세요.
+
+### Google Docs `.gdoc` 게시
+
+Google Drive for desktop의 `.gdoc`는 본문 파일이 아니라 Google 문서 바로가기입니다. `--file`에 `.gdoc` 경로가 들어오면 프로그램은 확장자를 제외한 파일명으로 Google Drive 문서를 찾고, 현재 본문을 일반 텍스트로 내보내 게시합니다.
+
+자동 실행을 위해 다음 준비를 한 번 수행합니다.
+
+1. Google Cloud 프로젝트에서 Google Drive API를 활성화하고 서비스 계정을 생성합니다.
+2. 서비스 계정의 JSON 키를 `google-service-account.json`으로 프로그램 폴더에 저장합니다. 이 파일은 Git에서 제외됩니다.
+3. 메뉴가 저장되는 Google Drive 폴더를 JSON 키의 `client_email` 주소와 **뷰어** 권한으로 공유합니다.
+4. Drive 폴더 URL의 폴더 ID를 `google_drive.folder_id`에 입력합니다.
+
+```yaml
+google_drive:
+  credentials_file: "./google-service-account.json"
+  folder_id: "1AbCdEfGoogleDriveFolderId"
+```
+
+이후 일반 파일과 동일하게 실행합니다.
+
+```powershell
+./mattermost-post.exe --group lunch --file "G:\내 드라이브\01.공유\구내식당\구내식당_메뉴_20260807.gdoc"
+```
+
+문서 이름이 같은 파일이 여러 개 있으면 잘못 게시하지 않고 오류로 종료합니다. `folder_id`를 지정하면 검색 범위가 해당 폴더로 제한됩니다.
 
 설정 파일 위치가 기본값 `./config.yaml`과 다르면 명시합니다.
 

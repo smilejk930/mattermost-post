@@ -2,6 +2,11 @@ mattermost:
   url: "https://mattermost.example.com"
   bot_token: "replace-with-real-token"
 
+# Required only when --file points to a .gdoc Google Docs shortcut.
+google_drive:
+  credentials_file: "./google-service-account.json"
+  folder_id: "google-drive-folder-id"
+
 groups:
   daily-news:
     team_name: "company"

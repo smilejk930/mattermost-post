@@ -13,6 +13,7 @@ import (
 )
 
 const tokenEnvironmentVariable = "MATTERMOST_BOT_TOKEN"
+const googleCredentialsEnvironmentVariable = "GOOGLE_APPLICATION_CREDENTIALS"
 
 type Mattermost struct {
 	URL      string `yaml:"url"`
@@ -28,10 +29,16 @@ type Log struct {
 	Directory string `yaml:"directory"`
 }
 
+type GoogleDrive struct {
+	CredentialsFile string `yaml:"credentials_file"`
+	FolderID        string `yaml:"folder_id"`
+}
+
 type Config struct {
-	Mattermost Mattermost       `yaml:"mattermost"`
-	Groups     map[string]Group `yaml:"groups"`
-	Log        Log              `yaml:"log"`
+	Mattermost  Mattermost       `yaml:"mattermost"`
+	GoogleDrive GoogleDrive      `yaml:"google_drive"`
+	Groups      map[string]Group `yaml:"groups"`
+	Log         Log              `yaml:"log"`
 }
 
 type Error struct {
@@ -80,9 +87,14 @@ func Load(path string, getenv func(string) string) (*Config, error) {
 
 	cfg.Mattermost.URL = strings.TrimSpace(cfg.Mattermost.URL)
 	cfg.Mattermost.BotToken = strings.TrimSpace(cfg.Mattermost.BotToken)
+	cfg.GoogleDrive.CredentialsFile = strings.TrimSpace(cfg.GoogleDrive.CredentialsFile)
+	cfg.GoogleDrive.FolderID = strings.TrimSpace(cfg.GoogleDrive.FolderID)
 	if getenv != nil {
 		if token := strings.TrimSpace(getenv(tokenEnvironmentVariable)); token != "" {
 			cfg.Mattermost.BotToken = token
+		}
+		if credentials := strings.TrimSpace(getenv(googleCredentialsEnvironmentVariable)); credentials != "" {
+			cfg.GoogleDrive.CredentialsFile = credentials
 		}
 	}
 
@@ -99,6 +111,12 @@ func Load(path string, getenv func(string) string) (*Config, error) {
 		cfg.Log.Directory = filepath.Join(filepath.Dir(absPath), cfg.Log.Directory)
 	}
 	cfg.Log.Directory = filepath.Clean(cfg.Log.Directory)
+	if cfg.GoogleDrive.CredentialsFile != "" && !filepath.IsAbs(cfg.GoogleDrive.CredentialsFile) {
+		cfg.GoogleDrive.CredentialsFile = filepath.Join(filepath.Dir(absPath), cfg.GoogleDrive.CredentialsFile)
+	}
+	if cfg.GoogleDrive.CredentialsFile != "" {
+		cfg.GoogleDrive.CredentialsFile = filepath.Clean(cfg.GoogleDrive.CredentialsFile)
+	}
 
 	return &cfg, nil
 }

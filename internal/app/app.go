@@ -9,12 +9,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/smilejk930/mattermost-post/internal/config"
 	"github.com/smilejk930/mattermost-post/internal/dailylog"
+	"github.com/smilejk930/mattermost-post/internal/googledrive"
 	"github.com/smilejk930/mattermost-post/internal/mattermost"
 	"github.com/smilejk930/mattermost-post/internal/message"
 )
@@ -153,16 +155,41 @@ func (r *Runner) Run(args []string, stdin io.Reader, stdout, stderr io.Writer) i
 		return writeError(stdout, stderr, jsonOutput, result, ExitUsage)
 	}
 
-	text, err := message.Load(message.Options{
-		Message: messageValue.value, MessageSet: messageValue.set,
-		File: fileValue.value, FileSet: fileValue.set,
-		Stdin: useStdin,
-	}, stdin)
+	ctx, cancel := context.WithTimeout(context.Background(), r.Timeout)
+	defer cancel()
+
+	var text string
+	useGoogleDoc := fileValue.set && !messageValue.set && !useStdin && strings.EqualFold(filepath.Ext(fileValue.value), ".gdoc")
+	if useGoogleDoc {
+		baseClient, ok := r.HTTPClient.(*http.Client)
+		if !ok {
+			baseClient = &http.Client{}
+		}
+		loader, loadErr := googledrive.New(ctx, cfg.GoogleDrive.CredentialsFile, baseClient)
+		if loadErr == nil {
+			var contents []byte
+			contents, loadErr = loader.LoadGDoc(ctx, fileValue.value, cfg.GoogleDrive.FolderID)
+			if loadErr == nil {
+				text, loadErr = message.Validate(contents)
+			}
+		}
+		err = loadErr
+	} else {
+		text, err = message.Load(message.Options{
+			Message: messageValue.value, MessageSet: messageValue.set,
+			File: fileValue.value, FileSet: fileValue.set,
+			Stdin: useStdin,
+		}, stdin)
+	}
 	if err != nil {
 		code := "input_error"
 		var inputErr *message.Error
 		if errors.As(err, &inputErr) {
 			code = inputErr.Code
+		}
+		var driveErr *googledrive.Error
+		if errors.As(err, &driveErr) {
+			code = driveErr.Code
 		}
 		result := output{
 			OK: false, Group: groupName, Team: group.TeamName, Channel: group.ChannelName,
@@ -176,8 +203,6 @@ func (r *Runner) Run(args []string, stdin io.Reader, stdout, stderr io.Writer) i
 	}
 
 	characterCount := utf8.RuneCountInString(text)
-	ctx, cancel := context.WithTimeout(context.Background(), r.Timeout)
-	defer cancel()
 	client := mattermost.NewClient(cfg.Mattermost.URL, cfg.Mattermost.BotToken, r.HTTPClient)
 	post, err := client.CreatePost(ctx, group.TeamName, group.ChannelName, text)
 	if err != nil {

@@ -82,6 +82,12 @@ func Load(options Options, stdin io.Reader) (string, error) {
 		}
 	}
 
+	return Validate(raw)
+}
+
+// Validate checks externally loaded message bytes using the same rules as
+// --file and --stdin input.
+func Validate(raw []byte) (string, error) {
 	if len(raw) > maxBytes {
 		return "", tooLongError()
 	}

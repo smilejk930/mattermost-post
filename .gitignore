@@ -1,5 +1,6 @@
 # Local configuration and secrets
 config.yaml
+google-service-account.json
 
 # Runtime logs
 logs/

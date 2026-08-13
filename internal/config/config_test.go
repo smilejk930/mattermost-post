@@ -46,6 +46,28 @@ func TestLoadValidConfigAndEnvironmentOverride(t *testing.T) {
 	}
 }
 
+func TestLoadGoogleCredentialsEnvironmentAndRelativePath(t *testing.T) {
+	dir := t.TempDir()
+	content := strings.Replace(validConfig, "groups:", "google_drive:\n  credentials_file: \"./file-key.json\"\n  folder_id: \" folder-id \"\ngroups:", 1)
+	path := writeConfig(t, dir, content)
+
+	cfg, err := Load(path, func(name string) string {
+		if name == googleCredentialsEnvironmentVariable {
+			return "./environment-key.json"
+		}
+		return ""
+	})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.GoogleDrive.CredentialsFile != filepath.Join(dir, "environment-key.json") {
+		t.Fatalf("CredentialsFile = %q", cfg.GoogleDrive.CredentialsFile)
+	}
+	if cfg.GoogleDrive.FolderID != "folder-id" {
+		t.Fatalf("FolderID = %q", cfg.GoogleDrive.FolderID)
+	}
+}
+
 func TestLoadRejectsUnknownField(t *testing.T) {
 	dir := t.TempDir()
 	path := writeConfig(t, dir, strings.Replace(validConfig, "  url:", "  unknown: true\n  url:", 1))
